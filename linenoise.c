@@ -911,6 +911,9 @@ static int linenoiseEdit(int fd, char *buf, size_t buflen, const char *prompt)
             return (int)l.len;
         case 3:     /* ctrl-c */
             errno = EAGAIN;
+#ifndef _WIN32
+            printf("\n");
+#endif
             exit(0);
             return -1;
         case 127:   /* backspace */
