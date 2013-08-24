@@ -912,7 +912,7 @@ static int linenoiseEdit(int fd, char *buf, size_t buflen, const char *prompt)
         case 3:     /* ctrl-c */
             errno = EAGAIN;
 #ifndef _WIN32
-            printf("\n");
+            printf("\r\n");
 #endif
             exit(0);
             return -1;
