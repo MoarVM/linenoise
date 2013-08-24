@@ -130,7 +130,7 @@ static char **history = NULL;
 
 /* for ctrl-r */
 static char        *search_buf = NULL;
-static unsigned int search_pos = -1;
+static int          search_pos = -1;
 
 
 /* The linenoiseState structure represents the state during line editing.
