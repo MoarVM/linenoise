@@ -93,6 +93,7 @@
 #ifndef _WIN32
 #include <termios.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
 #endif
 
@@ -119,6 +120,7 @@ static linenoiseCompletionCallback *completionCallback = NULL;
 
 #ifndef _WIN32
 static struct termios orig_termios; /* In order to restore at exit.*/
+static int orig_file_flags;              /* In order to restore at exit.*/
 #endif
 
 static int rawmode = 0; /* For atexit() function to check if restore is needed*/
@@ -386,11 +388,14 @@ static int enableRawMode(int fd) {
 #ifndef _WIN32
     struct termios raw;
 
-    if (!isatty(STDIN_FILENO)) goto fatal;
+    if (!isatty(fd)) goto fatal;
     if (!atexit_registered) {
         atexit(linenoiseAtExit);
         atexit_registered = 1;
     }
+
+    orig_file_flags = fcntl(fd, F_GETFL, 0);
+
     if (tcgetattr(fd,&orig_termios) == -1) goto fatal;
 
     raw = orig_termios;  /* modify the original mode */
@@ -401,12 +406,21 @@ static int enableRawMode(int fd) {
     raw.c_oflag &= ~(OPOST);
     /* control modes - set 8 bit chars */
     raw.c_cflag |= (CS8);
-    /* local modes - choing off, canonical off, no extended functions,
+    /* local modes - echoing off, canonical off, no extended functions,
      * no signal chars (^Z,^C) */
     raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
     /* control chars - set return condition: min number of bytes and timer.
      * We want read to return every single byte, without timeout. */
     raw.c_cc[VMIN] = 1; raw.c_cc[VTIME] = 0; /* 1 byte, no timer */
+
+#ifndef _WIN32
+    /* IEEE Std 1003.1-2001 does not specify whether the setting of O_NONBLOCK takes precedence
+     * over MIN or TIME settings. Therefore, if O_NONBLOCK is set, read() may return immediately,
+     * regardless of the setting of MIN or TIME. Also, if no data is available, read() may either
+     * return 0, or return -1 with errno set to [EAGAIN].
+     * See http://pubs.opengroup.org/onlinepubs/000095399/basedefs/xbd_chap11.html#tag_11_01_07 */
+    fcntl(fd, F_SETFL,  orig_file_flags & ~O_NONBLOCK);
+#endif
 
     /* put terminal in raw mode after flushing */
     if (tcsetattr(fd,TCSAFLUSH,&raw) < 0) goto fatal;
@@ -457,6 +471,9 @@ static void disableRawMode(int fd) {
     /* Don't even check the return value as it's too late. */
     if (rawmode && tcsetattr(fd,TCSAFLUSH,&orig_termios) != -1)
         rawmode = 0;
+
+    if (orig_file_flags != -1)
+        fcntl(fd, F_SETFL, orig_file_flags);
 #endif
 }
 
