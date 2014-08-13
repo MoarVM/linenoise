@@ -1069,10 +1069,6 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, 
             return (int)l.len;
         case CTRL_C:     /* ctrl-c */
             errno = EAGAIN;
-#ifndef _WIN32
-            printf("\r\n");
-#endif
-            exit(0);
             return -1;
         case BACKSPACE:   /* backspace */
         case CTRL_H:     /* ctrl-h */
