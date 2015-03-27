@@ -200,8 +200,11 @@ static int win32read(char *c, int length) {
     INPUT_RECORD b;
     KEY_EVENT_RECORD e;
 
+    if (length <= 0) return 0;
+    /* TODO: The rest of this function currently ignores 'length'. */
+
     while (1) {
-        if (!ReadConsoleInput(hIn, &b, (DWORD)length, &num_read)) return 0;
+        if (!ReadConsoleInput(hIn, &b, 1, &num_read)) return 0;
         if (!num_read) return 0;
 
         if (b.EventType == KEY_EVENT && b.Event.KeyEvent.bKeyDown) {
