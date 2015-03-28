@@ -200,8 +200,11 @@ static int win32read(char *c, int length) {
     INPUT_RECORD b;
     KEY_EVENT_RECORD e;
 
+    if (length <= 0) return 0;
+    /* TODO: The rest of this function currently ignores 'length'. */
+
     while (1) {
-        if (!ReadConsoleInput(hIn, &b, (DWORD)length, &num_read)) return 0;
+        if (!ReadConsoleInput(hIn, &b, 1, &num_read)) return 0;
         if (!num_read) return 0;
 
         if (b.EventType == KEY_EVENT && b.Event.KeyEvent.bKeyDown) {
@@ -212,7 +215,16 @@ static int win32read(char *c, int length) {
             //if (e.dwControlKeyState & (LEFT_ALT_PRESSED | RIGHT_ALT_PRESSED)) {
                 /* Alt+key ignored */
             //} else
-            if (e.dwControlKeyState & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED)) {
+            /* If the ASCII code looks control-ish and a CTRL modified was used,
+             * handle selected CTRL-* combinations.
+             * Note: We must not do this based on the CTRL modifiers alone,
+             * because depending on the keyboard layout, certain characters
+             * can only be typed using CTRL modifiers (e.g. '{' which is
+             * AltGr+7 on a German keyboard, AltGr being flagged as ALT+CTRL.)
+             */
+            if (((unsigned char)b.Event.KeyEvent.uChar.AsciiChar < 32)
+                &&
+               (e.dwControlKeyState & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED))) {
                 /* Ctrl+Key */
                 switch (*c) {
                     case 'D':
